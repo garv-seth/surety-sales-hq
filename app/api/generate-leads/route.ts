@@ -14,7 +14,6 @@ export async function POST(request: Request) {
     const message = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 2000,
-      stream: false,
       messages: [
         {
           role: 'user',
@@ -68,13 +67,21 @@ Return ONLY the JSON array, no other text.`,
 
     text = text.trim();
 
+    // Robust JSON extraction: find the first [ and last ] to handle any preamble/postamble
+    const jsonStart = text.indexOf('[');
+    const jsonEnd = text.lastIndexOf(']');
+    if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+      text = text.substring(jsonStart, jsonEnd + 1);
+    }
+    text = text.trim();
+
     // Parse JSON
     let leads;
     try {
       leads = JSON.parse(text);
     } catch (parseError) {
       console.error('JSON parse error:', parseError);
-      console.error('Text that failed to parse:', text);
+      console.error('Text that failed to parse:', text.substring(0, 200));
       throw new Error(`Invalid JSON from Claude: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
     }
 

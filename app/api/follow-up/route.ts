@@ -2,6 +2,17 @@ import { Anthropic } from '@anthropic-ai/sdk';
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+function extractJSON(text: string): string {
+  let t = text.trim();
+  if (t.startsWith('```json')) t = t.replace(/^```json\n?/, '').replace(/\n?```$/, '');
+  else if (t.startsWith('```')) t = t.replace(/^```\n?/, '').replace(/\n?```$/, '');
+  t = t.trim();
+  const start = t.indexOf('{');
+  const end = t.lastIndexOf('}');
+  if (start !== -1 && end !== -1 && end > start) t = t.substring(start, end + 1);
+  return t.trim();
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -52,8 +63,14 @@ Keep SMS under 160 characters. Return ONLY the JSON.`,
       ],
     });
 
-    const text = message.content[0].type === 'text' ? message.content[0].text : '{}';
-    const data = JSON.parse(text);
+    const raw = message.content[0].type === 'text' ? message.content[0].text : '{}';
+    let data;
+    try {
+      data = JSON.parse(extractJSON(raw));
+    } catch {
+      console.error('Follow-up JSON parse error, raw:', raw.substring(0, 200));
+      throw new Error('Invalid JSON response from Claude');
+    }
     return Response.json(data);
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'API error';
