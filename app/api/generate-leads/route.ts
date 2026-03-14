@@ -14,6 +14,7 @@ export async function POST(request: Request) {
     const message = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 2000,
+      stream: false,
       messages: [
         {
           role: 'user',
@@ -47,8 +48,41 @@ Return ONLY the JSON array, no other text.`,
       ],
     });
 
-    const text = message.content[0].type === 'text' ? message.content[0].text : '[]';
-    const leads = JSON.parse(text);
+    // Extract text from response
+    if (!message.content || message.content.length === 0) {
+      throw new Error('Empty response from Claude');
+    }
+
+    if (message.content[0].type !== 'text') {
+      throw new Error('Unexpected response type from Claude');
+    }
+
+    let text = message.content[0].text.trim();
+
+    // Strip markdown code fences if present
+    if (text.startsWith('```json')) {
+      text = text.replace(/^```json\n?/, '').replace(/\n?```$/, '');
+    } else if (text.startsWith('```')) {
+      text = text.replace(/^```\n?/, '').replace(/\n?```$/, '');
+    }
+
+    text = text.trim();
+
+    // Parse JSON
+    let leads;
+    try {
+      leads = JSON.parse(text);
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      console.error('Text that failed to parse:', text);
+      throw new Error(`Invalid JSON from Claude: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
+    }
+
+    // Validate leads is an array
+    if (!Array.isArray(leads)) {
+      throw new Error('Response is not a JSON array');
+    }
+
     return Response.json({ leads });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'API error';
