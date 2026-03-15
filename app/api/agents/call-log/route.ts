@@ -14,11 +14,19 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { prospectName, outcome, notes } = body;
+    // Accept both prospect_id (agent-preferred) and prospectName (legacy)
+    const { prospect_id, prospectName, outcome, notes } = body;
 
-    if (!prospectName || !outcome) {
+    if (!outcome) {
       return Response.json(
-        { error: 'Missing required fields: prospectName, outcome' },
+        { error: 'Missing required field: outcome' },
+        { status: 400 }
+      );
+    }
+
+    if (!prospect_id && !prospectName) {
+      return Response.json(
+        { error: 'Missing required field: prospect_id (or prospectName for legacy)' },
         { status: 400 }
       );
     }
@@ -31,16 +39,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const today = new Date().toISOString().split('T')[0];
     const callLog = {
-      prospectName,
+      id: `log_${Date.now()}`,
+      prospect_id: prospect_id || null,
+      prospectName: prospectName || null,
       outcome,
       notes: notes || '',
+      date: today,
+      timestamp: new Date().toISOString(),
     };
 
     return Response.json({
       success: true,
       callLog,
-      message: 'Call log validated. Add to localStorage client-side using addCallLog().',
+      localStorage_key: 'surety_call_logs',
+      message: 'Call log validated. Append to localStorage array using addCallLog() from lib/storage.ts.',
     });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Failed to process call log';
