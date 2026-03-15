@@ -491,10 +491,11 @@ export default function ProspectsPage() {
                           ) : <span className="text-xs text-muted-foreground/40">—</span>}
                         </td>
                         <td className="px-4 py-3">
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="flex items-center gap-1 transition-opacity" data-testid={`prospect-row-actions-${p.id}`}>
                             <button
                               onClick={() => router.push(`/coach?prospect=${encodeURIComponent(p.ownerName)}&phone=${encodeURIComponent(p.phone)}&businessType=${encodeURIComponent(p.businessType)}`)}
                               data-action="call"
+                              data-testid={`prospect-table-call-${p.id}`}
                               aria-label={`Call ${p.ownerName} at ${p.businessName}`}
                               className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 text-emerald-600 transition-colors"
                             >
@@ -503,6 +504,7 @@ export default function ProspectsPage() {
                             <button
                               onClick={() => { deleteProspect(p.id); loadProspects(); }}
                               data-action="delete"
+                              data-testid={`prospect-table-delete-${p.id}`}
                               aria-label={`Delete ${p.businessName}`}
                               className="p-1.5 rounded-lg bg-red-50 dark:bg-red-900/30 hover:bg-red-100 text-red-500 transition-colors"
                             >

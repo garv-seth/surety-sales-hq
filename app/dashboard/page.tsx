@@ -168,7 +168,7 @@ function ProspectCard({ prospect, onDelete, onMove }: {
         )}
       </div>
 
-      <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 sm:opacity-100 transition-opacity">
+      <div className="flex gap-1.5 transition-opacity" data-section="prospect-actions" data-testid={`prospect-actions-${prospect.id}`}>
         <button
           onClick={() => router.push(`/coach?prospect=${encodeURIComponent(prospect.ownerName)}&phone=${encodeURIComponent(prospect.phone)}&businessType=${encodeURIComponent(prospect.businessType)}`)}
           data-action="call"
@@ -267,6 +267,7 @@ export default function DashboardPage() {
             aria-label="Open power dialer"
             data-action="navigate"
             data-destination="/dialer"
+            data-testid="dashboard-open-dialer-button"
             className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl px-4 py-2.5 text-sm font-bold transition-all btn-glow shadow-lg shadow-emerald-500/20"
           >
             <Zap className="w-4 h-4" />
@@ -315,6 +316,7 @@ export default function DashboardPage() {
           className="glass-card rounded-2xl md:rounded-3xl p-4 md:p-5 border border-border"
           data-metric="calls-today"
           data-value={callsToday}
+          data-testid="dashboard-stat-calls-today"
         >
           <div className="flex items-center justify-between mb-3">
             <span className="section-label">Calls Today</span>
@@ -340,6 +342,7 @@ export default function DashboardPage() {
           className="glass-card rounded-2xl md:rounded-3xl p-4 md:p-5 border border-border"
           data-metric="demos-scheduled"
           data-value={demosScheduled}
+          data-testid="dashboard-stat-demos"
         >
           <div className="flex items-center justify-between mb-3">
             <span className="section-label">Demos Booked</span>
@@ -358,6 +361,7 @@ export default function DashboardPage() {
           className="glass-card rounded-2xl md:rounded-3xl p-4 md:p-5 border border-border"
           data-metric="deals-closed"
           data-value={dealsWon}
+          data-testid="dashboard-stat-deals-closed"
         >
           <div className="flex items-center justify-between mb-3">
             <span className="section-label">Deals Closed</span>
@@ -376,6 +380,7 @@ export default function DashboardPage() {
           className="glass-card rounded-2xl md:rounded-3xl p-4 md:p-5 border border-emerald-200/60 dark:border-emerald-800/60 bg-gradient-to-br from-emerald-50/80 to-transparent dark:from-emerald-900/20"
           data-metric="pipeline-mrr"
           data-value={pipelineValue}
+          data-testid="dashboard-stat-mrr"
         >
           <div className="flex items-center justify-between mb-3">
             <span className="section-label">Pipeline MRR</span>

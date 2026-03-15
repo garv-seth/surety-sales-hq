@@ -293,7 +293,10 @@ export default function DialerPage() {
           data-entity="prospect"
           data-entity-id={currentProspect?.id}
           data-entity-stage={currentProspect?.stage}
+          data-entity-phone={currentProspect?.phone}
+          data-entity-name={currentProspect?.businessName}
           data-section="prospect-card"
+          data-testid="dialer-current-prospect"
           aria-label="Current prospect"
         >
           <div className={cn(
@@ -355,7 +358,9 @@ export default function DialerPage() {
                 <button
                   onClick={startCall}
                   data-action="start-call"
+                  data-testid="dialer-call-button"
                   data-state="idle"
+                  data-prospect-id={currentProspect?.id}
                   aria-label={`Start call with ${currentProspect?.businessName}`}
                   className="w-20 h-20 rounded-full bg-emerald-500 hover:bg-emerald-600 active:scale-95
                              flex items-center justify-center shadow-xl shadow-emerald-500/30
@@ -367,6 +372,7 @@ export default function DialerPage() {
                 <button
                   onClick={endCall}
                   data-action="end-call"
+                  data-testid="dialer-end-call-button"
                   data-state="calling"
                   aria-label="End call and log outcome"
                   className="w-20 h-20 rounded-full bg-red-500 hover:bg-red-600 active:scale-95
@@ -388,6 +394,7 @@ export default function DialerPage() {
           <button
             onClick={handleSkip}
             data-action="skip"
+            data-testid="dialer-skip-button"
             aria-label="Skip to next prospect"
             className="flex-1 flex items-center justify-center gap-1.5 h-11 rounded-2xl border border-border text-sm font-semibold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
           >
@@ -397,6 +404,7 @@ export default function DialerPage() {
           <button
             onClick={handleShuffle}
             data-action="shuffle-queue"
+            data-testid="dialer-shuffle-button"
             aria-label="Shuffle queue order"
             className="flex-1 flex items-center justify-center gap-1.5 h-11 rounded-2xl border border-border text-sm font-semibold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
           >
@@ -406,6 +414,7 @@ export default function DialerPage() {
           <button
             onClick={() => setLogOpen(true)}
             data-action="log-call"
+            data-testid="dialer-log-button"
             aria-label="Open log call dialog"
             className="flex-1 flex items-center justify-center gap-1.5 h-11 rounded-2xl bg-foreground text-background text-sm font-semibold hover:opacity-90 transition-opacity"
           >
@@ -630,7 +639,9 @@ export default function DialerPage() {
                   <button
                     onClick={startCall}
                     data-action="start-call"
+                    data-testid="dialer-call-button-desktop"
                     data-state="idle"
+                    data-prospect-id={currentProspect?.id}
                     aria-label={`Start call with ${currentProspect?.businessName}`}
                     className="flex-1 flex items-center justify-center gap-2.5 bg-emerald-500 hover:bg-emerald-600 active:scale-[0.98] text-white rounded-2xl h-14 font-bold text-base transition-all btn-glow shadow-lg shadow-emerald-500/20"
                   >
@@ -641,6 +652,7 @@ export default function DialerPage() {
                   <button
                     onClick={endCall}
                     data-action="end-call"
+                    data-testid="dialer-end-call-button-desktop"
                     data-state="calling"
                     aria-label="End call and log outcome"
                     className="flex-1 flex items-center justify-center gap-2.5 bg-red-500 hover:bg-red-600 active:scale-[0.98] text-white rounded-2xl h-14 font-bold text-base transition-all shadow-lg shadow-red-500/20"
@@ -817,6 +829,7 @@ export default function DialerPage() {
           aria-modal="true"
           aria-label="Log call outcome"
           data-section="log-call"
+          data-testid="dialer-log-dialog"
         >
           <div
             className="absolute inset-0 bg-black/55 backdrop-blur-sm"
@@ -893,6 +906,7 @@ export default function DialerPage() {
             <button
               onClick={handleLogAndNext}
               data-action="save-log"
+              data-testid="dialer-save-log-button"
               aria-label="Save call log and advance to next prospect"
               className="w-full bg-emerald-500 hover:bg-emerald-600 active:scale-[0.99] text-white rounded-2xl py-3.5 font-bold text-sm transition-all btn-glow shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2"
             >

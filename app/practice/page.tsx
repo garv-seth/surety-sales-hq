@@ -26,9 +26,9 @@ interface Report {
 }
 
 function ScoreBadge({ score, size = 'sm' }: { score: number; size?: 'sm' | 'lg' }) {
-  const color = score >= 8 ? 'text-emerald-700 bg-emerald-50 border-emerald-200' :
-                score >= 6 ? 'text-amber-700 bg-amber-50 border-amber-200' :
-                             'text-red-700 bg-red-50 border-red-200';
+  const color = score >= 8 ? 'text-primary bg-primary/10 border-primary/30' :
+                score >= 6 ? 'text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-700' :
+                             'text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-700';
   return (
     <div className={`flex items-center gap-1.5 border rounded-xl px-3 py-1.5 ${color}`}>
       <Star className={size === 'lg' ? 'w-4 h-4' : 'w-3.5 h-3.5'} />
@@ -152,14 +152,14 @@ export default function PracticePage() {
     return (
       <main data-page="practice" role="main" className="p-4 md:p-6 max-w-2xl mx-auto">
         <div className="mb-6">
-          <h1 className="text-2xl font-black text-gray-900 tracking-tight">Practice Mode</h1>
-          <p className="text-sm text-gray-500 mt-0.5">AI roleplay to sharpen your pitch and get scored feedback</p>
+          <h1 className="text-2xl font-black text-foreground tracking-tight">Practice Mode</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">AI roleplay to sharpen your pitch and get scored feedback</p>
         </div>
 
         <div className="glass-card rounded-2xl p-5 space-y-6" data-section="practice-setup">
           {/* Business Type */}
           <div>
-            <label className="text-sm font-bold text-gray-700 mb-3 block">
+            <label className="text-sm font-bold text-foreground mb-3 block">
               Business Type
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2" role="group" aria-label="Select business type">
@@ -172,8 +172,8 @@ export default function PracticePage() {
                   data-value={t}
                   className={`text-sm py-2.5 px-3 rounded-xl font-semibold transition-all border ${
                     businessType === t
-                      ? 'bg-emerald-500 text-white border-emerald-500 shadow-sm'
-                      : 'border-gray-200 text-gray-700 hover:border-emerald-300 hover:bg-emerald-50/50'
+                      ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                      : 'border-border text-foreground hover:border-primary/40 hover:bg-primary/5'
                   }`}
                 >
                   {t}
@@ -184,7 +184,7 @@ export default function PracticePage() {
 
           {/* Scenario */}
           <div>
-            <label className="text-sm font-bold text-gray-700 mb-3 block">
+            <label className="text-sm font-bold text-foreground mb-3 block">
               Scenario / Difficulty
             </label>
             <div className="space-y-2" role="group" aria-label="Select scenario difficulty">
@@ -197,14 +197,14 @@ export default function PracticePage() {
                   data-value={s.value}
                   className={`w-full flex items-center gap-3 p-3.5 rounded-xl border text-left transition-all ${
                     scenario === s.value
-                      ? 'border-emerald-400 bg-emerald-50/60'
-                      : 'border-gray-200 hover:border-emerald-300 hover:bg-gray-50'
+                      ? 'border-primary/60 bg-primary/8'
+                      : 'border-border hover:border-primary/40 hover:bg-muted'
                   }`}
                 >
                   <span className="text-xl w-7 flex-shrink-0">{s.emoji}</span>
                   <div className="flex-1">
-                    <p className="text-sm font-semibold text-gray-800">{s.label}</p>
-                    <p className="text-xs text-gray-400">{s.desc}</p>
+                    <p className="text-sm font-semibold text-foreground">{s.label}</p>
+                    <p className="text-xs text-muted-foreground">{s.desc}</p>
                   </div>
                   {scenario === s.value && (
                     <ChevronRight className="w-4 h-4 text-emerald-500 flex-shrink-0" />
@@ -245,13 +245,13 @@ export default function PracticePage() {
             onClick={reset}
             aria-label="Back to practice setup"
             data-action="reset-practice"
-            className="w-8 h-8 glass-card rounded-xl flex items-center justify-center text-gray-500 hover:text-gray-800 transition-colors"
+            className="w-8 h-8 glass-card rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
           <div>
-            <h1 className="text-base font-bold text-gray-900">{scenario}</h1>
-            <p className="text-xs text-gray-500">
+            <h1 className="text-base font-bold text-foreground">{scenario}</h1>
+            <p className="text-xs text-muted-foreground">
               {businessType} · {messages.filter(m => m.role === 'user').length} exchanges
             </p>
           </div>
@@ -273,17 +273,17 @@ export default function PracticePage() {
           aria-label="Practice report"
         >
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-base font-black text-gray-900">Practice Report</h3>
+            <h3 className="text-base font-black text-foreground">Practice Report</h3>
             <ScoreBadge score={report.finalScore} size="lg" />
           </div>
-          <p className="text-sm text-gray-600 mb-4 italic leading-relaxed">{report.summary}</p>
+          <p className="text-sm text-muted-foreground mb-4 italic leading-relaxed">{report.summary}</p>
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
               <p className="text-xs font-bold text-emerald-700 mb-2 uppercase tracking-wide">Strengths</p>
               <ul className="space-y-1.5">
                 {report.strengths?.map((s, i) => (
-                  <li key={i} className="text-xs text-gray-700 flex gap-1.5">
-                    <span className="text-emerald-500 flex-shrink-0">✓</span>{s}
+                  <li key={i} className="text-xs text-foreground flex gap-1.5">
+                    <span className="text-primary flex-shrink-0">✓</span>{s}
                   </li>
                 ))}
               </ul>
@@ -292,7 +292,7 @@ export default function PracticePage() {
               <p className="text-xs font-bold text-amber-600 mb-2 uppercase tracking-wide">Improve</p>
               <ul className="space-y-1.5">
                 {report.improvements?.map((s, i) => (
-                  <li key={i} className="text-xs text-gray-700 flex gap-1.5">
+                  <li key={i} className="text-xs text-foreground flex gap-1.5">
                     <span className="text-amber-500 flex-shrink-0">→</span>{s}
                   </li>
                 ))}
@@ -338,11 +338,11 @@ export default function PracticePage() {
             <div className="max-w-[82%] space-y-2">
               <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                 msg.role === 'user'
-                  ? 'bg-emerald-500 text-white'
-                  : 'glass-card text-gray-700'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'glass-card text-foreground'
               }`}>
                 {msg.role === 'ai' && (
-                  <p className="text-[10px] font-bold text-gray-400 mb-1 uppercase tracking-wide">
+                  <p className="text-[10px] font-bold text-muted-foreground mb-1 uppercase tracking-wide">
                     Mike ({businessType.toUpperCase()} OWNER)
                   </p>
                 )}
@@ -365,7 +365,7 @@ export default function PracticePage() {
         {loading && (
           <div className="flex justify-start" data-state="loading" aria-busy="true">
             <div className="glass-card rounded-2xl px-4 py-3">
-              <div className="flex items-center gap-2 text-gray-400">
+              <div className="flex items-center gap-2 text-muted-foreground">
                 <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                 <span className="text-sm">Mike is typing…</span>
               </div>
@@ -388,7 +388,7 @@ export default function PracticePage() {
             data-field="practice-input"
             aria-label="Your response to the prospect"
             disabled={loading}
-            className="flex-1 border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 disabled:opacity-50"
+            className="flex-1 border border-border bg-background text-foreground rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:opacity-50"
           />
           <button
             onClick={handleSend}
