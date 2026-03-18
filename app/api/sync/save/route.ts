@@ -12,6 +12,7 @@ export async function POST(req: NextRequest) {
       access: 'private',
       contentType: 'application/json',
       addRandomSuffix: false,
+      allowOverwrite: true,
     });
 
     return NextResponse.json({ ok: true, url: blob.url, count: prospects.length });
