@@ -9,12 +9,20 @@ export async function GET() {
     }
 
     const blob = blobs[0];
-    const res = await fetch(blob.url);
+    const token = process.env.BLOB_READ_WRITE_TOKEN;
+
+    // Private blobs require the token as auth header
+    const res = await fetch(blob.url, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+
     if (!res.ok) {
-      return NextResponse.json({ prospects: [], found: false });
+      return NextResponse.json({ prospects: [], found: false, status: res.status });
     }
 
-    const prospects = await res.json();
+    const text = await res.text();
+    const prospects = JSON.parse(text);
+
     return NextResponse.json({
       prospects: Array.isArray(prospects) ? prospects : [],
       found: true,

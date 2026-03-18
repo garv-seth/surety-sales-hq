@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
     }
 
     const blob = await put('surety-prospects.json', JSON.stringify(prospects), {
-      access: 'public',
+      access: 'private',
       contentType: 'application/json',
       addRandomSuffix: false,
     });
