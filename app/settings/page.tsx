@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import {
   Settings, User, Phone, Key, Download, Upload, Trash2,
   Copy, Check, RefreshCw, Plus, X, Eye, EyeOff, Save,
-  ChevronRight, Moon, Sun, Database, Pencil, Terminal
+  ChevronRight, Moon, Sun, Database, Pencil, Terminal, Calendar, ExternalLink, Link
 } from 'lucide-react';
 import {
   getSettings, saveSettings, getAgentToken, generateAgentToken,
@@ -17,6 +17,7 @@ const SECTIONS = [
   { key: 'Call Script', icon: Pencil, desc: 'Customize your script steps' },
   { key: 'Objections', icon: Terminal, desc: 'Add custom objection responses' },
   { key: 'Agent API', icon: Key, desc: 'Token and API endpoints' },
+  { key: 'Integrations', icon: Calendar, desc: 'Calendly booking + Twilio' },
   { key: 'Data Management', icon: Database, desc: 'Export, import, or clear data' },
 ];
 
@@ -39,11 +40,20 @@ export default function SettingsPage() {
   const [confirmClear, setConfirmClear] = useState(false);
   const [importMsg, setImportMsg] = useState('');
   const [darkMode, setDarkMode] = useState(false);
+  const [calendlyConnected, setCalendlyConnected] = useState<boolean | null>(null);
+  const [calendlyName, setCalendlyName] = useState('');
 
   useEffect(() => {
     setSettings(getSettings());
     setToken(getAgentToken() || generateAgentToken());
     const saved = localStorage.getItem('surety_theme');
+    // Check Calendly connection
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('calendly') === 'connected') { setCalendlyConnected(true); }
+    fetch('/api/calendly/event-types').then(r => r.json()).then(d => {
+      setCalendlyConnected(!d.error && d.eventTypes !== undefined);
+      if (d.userName) setCalendlyName(d.userName);
+    }).catch(() => setCalendlyConnected(false));
     setDarkMode(saved === 'dark');
     // Default: desktop shows first section
     if (window.innerWidth >= 768) setActiveSection('Personalization');
