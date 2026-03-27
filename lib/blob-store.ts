@@ -1,15 +1,37 @@
 // lib/blob-store.ts
-// Server-side Redis helpers for prospects — replaces @vercel/blob to avoid Advanced Op quotas
+// Server-side Redis helpers for prospects — uses Upstash REST API via KV_REDIS_URL
 import { Redis } from '@upstash/redis';
 import type { Prospect } from './storage';
 
 const REDIS_KEY = 'surety-prospects';
 
 function getRedis(): Redis {
-  const url = process.env.KV_REST_API_URL;
-  const token = process.env.KV_REST_API_TOKEN;
-  if (!url || !token) throw new Error('KV_REST_API_URL / KV_REST_API_TOKEN env vars not set');
-  return new Redis({ url, token });
+  // Vercel KV integration creates KV_REDIS_URL in format:
+  // rediss://default:TOKEN@HOST.upstash.io:PORT
+  const redisUrl = process.env.KV_REDIS_URL;
+  const restUrl = process.env.KV_REST_API_URL;
+  const restToken = process.env.KV_REST_API_TOKEN;
+
+  // If REST API vars are set directly, use them
+  if (restUrl && restToken) {
+    return new Redis({ url: restUrl, token: restToken });
+  }
+
+  // Parse KV_REDIS_URL to extract Upstash REST credentials
+  if (redisUrl) {
+    try {
+      // Format: rediss://default:TOKEN@HOST.upstash.io:6379
+      const url = new URL(redisUrl);
+      const token = url.password; // the password is the Upstash token
+      const host = url.hostname;  // e.g. us1-xyz.upstash.io
+      const apiUrl = `https://${host}`;
+      return new Redis({ url: apiUrl, token });
+    } catch (e) {
+      throw new Error(`Failed to parse KV_REDIS_URL: ${e}`);
+    }
+  }
+
+  throw new Error('No Redis env vars found. Set KV_REDIS_URL or KV_REST_API_URL+KV_REST_API_TOKEN');
 }
 
 export async function readProspectsFromBlob(): Promise<Prospect[]> {
@@ -57,7 +79,6 @@ export async function addProspectsToBlob(
   return { added, skipped, total: existing.length };
 }
 
-// Purge low-confidence new prospects (score < threshold)
 export async function pruneWeakProspects(minScore = 60): Promise<{ pruned: number; kept: number }> {
   const prospects = await readProspectsFromBlob();
   const kept = prospects.filter(
