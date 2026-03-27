@@ -1,28 +1,25 @@
 import { NextResponse } from 'next/server';
-import { Redis } from '@upstash/redis';
+import IORedis from 'ioredis';
 
 const REDIS_KEY = 'surety-prospects';
 
-function getRedis(): Redis {
-  const redisUrl = process.env.KV_REDIS_URL;
-  const restUrl = process.env.KV_REST_API_URL;
-  const restToken = process.env.KV_REST_API_TOKEN;
-  if (restUrl && restToken) return new Redis({ url: restUrl, token: restToken });
-  if (redisUrl) {
-    const u = new URL(redisUrl);
-    return new Redis({ url: `https://${u.hostname}`, token: u.password });
+let _redis: IORedis | null = null;
+function getRedis(): IORedis {
+  if (!_redis) {
+    const url = process.env.KV_REDIS_URL;
+    if (!url) throw new Error('KV_REDIS_URL not set');
+    _redis = new IORedis(url, { maxRetriesPerRequest: 3 });
   }
-  throw new Error('No Redis env vars');
+  return _redis;
 }
 
 export async function GET() {
   try {
     const redis = getRedis();
-    const prospects = await redis.get<unknown[]>(REDIS_KEY);
-    if (!prospects || !Array.isArray(prospects)) {
-      return NextResponse.json({ prospects: [], found: false });
-    }
-    return NextResponse.json({ prospects, found: true, count: prospects.length });
+    const data = await redis.get(REDIS_KEY);
+    if (!data) return NextResponse.json({ prospects: [], found: false });
+    const prospects = JSON.parse(data);
+    return NextResponse.json({ prospects: Array.isArray(prospects) ? prospects : [], found: true, count: Array.isArray(prospects) ? prospects.length : 0 });
   } catch (err) {
     console.error('Sync load error:', err);
     return NextResponse.json({ prospects: [], found: false, error: String(err) });

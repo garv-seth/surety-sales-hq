@@ -1,52 +1,37 @@
 // lib/blob-store.ts
-// Server-side Redis helpers for prospects — uses Upstash REST API via KV_REDIS_URL
-import { Redis } from '@upstash/redis';
+// Server-side Redis helpers for prospects — uses ioredis with KV_REDIS_URL
+import IORedis from 'ioredis';
 import type { Prospect } from './storage';
 
 const REDIS_KEY = 'surety-prospects';
 
-function getRedis(): Redis {
-  // Vercel KV integration creates KV_REDIS_URL in format:
-  // rediss://default:TOKEN@HOST.upstash.io:PORT
-  const redisUrl = process.env.KV_REDIS_URL;
-  const restUrl = process.env.KV_REST_API_URL;
-  const restToken = process.env.KV_REST_API_TOKEN;
+// Module-level singleton — reused across warm invocations
+let _redis: IORedis | null = null;
 
-  // If REST API vars are set directly, use them
-  if (restUrl && restToken) {
-    return new Redis({ url: restUrl, token: restToken });
+function getRedis(): IORedis {
+  if (!_redis) {
+    const url = process.env.KV_REDIS_URL;
+    if (!url) throw new Error('KV_REDIS_URL env var not set');
+    _redis = new IORedis(url, { maxRetriesPerRequest: 3, lazyConnect: false });
   }
-
-  // Parse KV_REDIS_URL to extract Upstash REST credentials
-  if (redisUrl) {
-    try {
-      // Format: rediss://default:TOKEN@HOST.upstash.io:6379
-      const url = new URL(redisUrl);
-      const token = url.password; // the password is the Upstash token
-      const host = url.hostname;  // e.g. us1-xyz.upstash.io
-      const apiUrl = `https://${host}`;
-      return new Redis({ url: apiUrl, token });
-    } catch (e) {
-      throw new Error(`Failed to parse KV_REDIS_URL: ${e}`);
-    }
-  }
-
-  throw new Error('No Redis env vars found. Set KV_REDIS_URL or KV_REST_API_URL+KV_REST_API_TOKEN');
+  return _redis;
 }
 
 export async function readProspectsFromBlob(): Promise<Prospect[]> {
   try {
-    const redis = getRedis();
-    const data = await redis.get<Prospect[]>(REDIS_KEY);
-    return Array.isArray(data) ? data : [];
+    const r = getRedis();
+    const data = await r.get(REDIS_KEY);
+    if (!data) return [];
+    const parsed = JSON.parse(data);
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
   }
 }
 
 export async function writeProspectsToBlob(prospects: Prospect[]): Promise<void> {
-  const redis = getRedis();
-  await redis.set(REDIS_KEY, prospects);
+  const r = getRedis();
+  await r.set(REDIS_KEY, JSON.stringify(prospects));
 }
 
 export async function addProspectsToBlob(
