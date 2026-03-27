@@ -191,12 +191,16 @@ export async function POST(req: NextRequest) {
     let searchCount = 0;
     let detailCount = 0;
 
-    for (const city of cities) {
-      for (const btype of businessTypes) {
-        try {
-          const placeType = PLACE_TYPE_MAP[btype] || 'general_contractor';
+    // Build all city x type combos and process in parallel for speed
+    const combos: [string, string][] = [];
+    for (const city of cities) for (const btype of businessTypes) combos.push([city, btype]);
+
+    const comboResults = await Promise.allSettled(combos.map(async ([city, btype]) => {
+      const localLog: string[] = [];
+      const qualified: Prospect[] = [];
+      try {
           const query = `${btype} near ${city} ${state}`;
-          log.push(`Searching: ${query}`);
+          localLog.push(`Searching: ${query}`);
 
           let allPlaces: PlaceSummary[] = [];
           let nextToken: string | undefined;
@@ -208,16 +212,12 @@ export async function POST(req: NextRequest) {
             allPlaces = allPlaces.concat(results);
             nextToken = nextPageToken;
             pages++;
-            searchCount++;
-            if (nextToken && pages < maxPages) await new Promise(r => setTimeout(r, 2000)); // required delay for Places API
+            if (nextToken && pages < maxPages) await new Promise(r => setTimeout(r, 2000));
           } while (nextToken && pages < maxPages && allPlaces.length < maxPerCombo * 2);
 
-          // Get details for top candidates (up to maxPerCombo * 2 to allow for filtering)
           const candidates = allPlaces.slice(0, Math.min(maxPerCombo * 2, 30));
           const detailResults = await Promise.allSettled(candidates.map(p => getPlaceDetails(p.place_id)));
-          detailCount += candidates.length;
 
-          const qualified: Prospect[] = [];
           for (let i = 0; i < candidates.length; i++) {
             const result = detailResults[i];
             if (result.status !== 'fulfilled' || !result.value) continue;
@@ -246,9 +246,8 @@ export async function POST(req: NextRequest) {
             if (qualified.length >= maxPerCombo) break;
           }
 
-          log.push(`  → ${qualified.length} qualified from ${candidates.length} candidates`);
+          localLog.push(`  → ${qualified.length} qualified from ${candidates.length} candidates`);
 
-          // Run AI research on each qualified prospect
           if (runResearch && qualified.length > 0) {
             const researchResults = await Promise.allSettled(
               qualified.map(p => researchProspect({
@@ -266,19 +265,22 @@ export async function POST(req: NextRequest) {
                 qualified[i].research = r.value;
               }
             }
-            log.push(`  → Research complete for ${qualified.length} prospects`);
+            localLog.push(`  → Research complete for ${qualified.length} prospects`);
           }
+      } catch (err) {
+        localLog.push(`  ⚠ Error for ${city}/${btype}: ${String(err)}`);
+      }
+      return { qualified, log: localLog, searched: 1, details: qualified.length };
+    }));
 
-          allResults.push(...qualified);
-
-          // Small delay between combos to be respectful
-          await new Promise(r => setTimeout(r, 300));
-        } catch (err) {
-          log.push(`  ⚠ Error for ${city}/${btype}: ${String(err)}`);
-        }
+    for (const r of comboResults) {
+      if (r.status === 'fulfilled') {
+        allResults.push(...r.value.qualified);
+        log.push(...r.value.log);
+        searchCount += r.value.searched;
+        detailCount += r.value.details;
       }
     }
-
     // Write to Blob
     const blobResult = await addProspectsToBlob(allResults);
 
@@ -309,3 +311,5 @@ export async function GET(req: NextRequest) {
     note: 'Researches each prospect with Claude before adding to the database',
   });
 }
+
+
