@@ -17,10 +17,10 @@ export async function POST(req: NextRequest) {
     if (conferenceName) {
       // Join an existing conference room (parallel dial connect)
       const dial = twiml.dial();
-      dial.conference(conferenceName, {
+      (dial as any).conference(conferenceName, {
         startConferenceOnEnter: true,
         endConferenceOnExit: true,
-        maxParticipants: '2',
+        maxParticipants: 2,
       });
     } else if (to) {
       // Standard direct dial
