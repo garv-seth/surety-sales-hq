@@ -1,33 +1,28 @@
 import { NextResponse } from 'next/server';
-import { list } from '@vercel/blob';
+import { Redis } from '@upstash/redis';
+
+const REDIS_KEY = 'surety-prospects';
+
+function getRedis(): Redis {
+  const url = process.env.KV_REST_API_URL;
+  const token = process.env.KV_REST_API_TOKEN;
+  if (!url || !token) throw new Error('KV env vars not set');
+  return new Redis({ url, token });
+}
 
 export async function GET() {
   try {
-    const { blobs } = await list({ prefix: 'surety-prospects.json' });
-    if (!blobs || blobs.length === 0) {
+    const redis = getRedis();
+    const prospects = await redis.get<unknown[]>(REDIS_KEY);
+
+    if (!prospects || !Array.isArray(prospects)) {
       return NextResponse.json({ prospects: [], found: false });
     }
 
-    const blob = blobs[0];
-    const token = process.env.BLOB_READ_WRITE_TOKEN;
-
-    // Private blobs require the token as auth header
-    const res = await fetch(blob.url, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-
-    if (!res.ok) {
-      return NextResponse.json({ prospects: [], found: false, status: res.status });
-    }
-
-    const text = await res.text();
-    const prospects = JSON.parse(text);
-
     return NextResponse.json({
-      prospects: Array.isArray(prospects) ? prospects : [],
+      prospects,
       found: true,
-      updatedAt: blob.uploadedAt,
-      count: Array.isArray(prospects) ? prospects.length : 0,
+      count: prospects.length,
     });
   } catch (err) {
     console.error('Sync load error:', err);

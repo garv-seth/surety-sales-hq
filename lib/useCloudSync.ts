@@ -89,7 +89,7 @@ export function useCloudSync() {
   useEffect(() => {
     autoSaveTimer.current = setInterval(() => {
       pushToCloud();
-    }, 60_000);
+    }, 300_000);
 
     return () => {
       if (autoSaveTimer.current) clearInterval(autoSaveTimer.current);
@@ -98,3 +98,4 @@ export function useCloudSync() {
 
   return { status, lastSynced, error, syncNow, pushToCloud, pullFromCloud };
 }
+
