@@ -13,6 +13,7 @@ import {
 } from '@/lib/storage';
 import { OBJECTIONS, CALL_SCRIPT_STEPS } from '@/lib/surety-content';
 import { useTwilioCall, CallStatus } from '@/lib/useTwilioCall';
+import { ParallelDialPanel } from '@/components/ParallelDialPanel';
 import { cn } from '@/lib/utils';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -104,6 +105,13 @@ function CallCoachOverlay({
   const [phase, setPhase] = useState<'opener' | 'script' | 'close'>('opener');
 
   const painPoints = getPainPoints(prospect.businessType);
+
+  // Use AI-researched data when available, fall back to defaults
+  const researchedOpener = prospect.research?.personalizedOpener;
+  const researchedPainPoints = prospect.research?.painPoints;
+  const activePainPoints = researchedPainPoints?.length ? researchedPainPoints : painPoints;
+  const callAngle = prospect.research?.callAngle;
+  const hasResearch = !!prospect.research;
 
   // Preload Calendly event types
   useEffect(() => {
@@ -206,6 +214,16 @@ function CallCoachOverlay({
           <div className="p-4 space-y-4">
             {/* Pattern interrupt */}
             <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4">
+              {hasResearch && (
+                <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-3 mb-3">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className="text-[9px] font-bold text-blue-400 uppercase tracking-widest">🔬 AI-Researched Opener</span>
+                    <span className="text-[9px] bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded">personalized</span>
+                  </div>
+                  <p className="text-blue-100 text-sm italic leading-relaxed">&#34;{researchedOpener}&#34;</p>
+                  {callAngle && <p className="text-blue-300 text-[11px] mt-2">Angle: {callAngle}</p>}
+                </div>
+              )}
               <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-2">Pattern Interrupt Opener</p>
               <p className="text-white text-base font-medium leading-relaxed">
                 "Hey <span className="text-emerald-400 font-bold">{firstName}</span>, quick question — do you want the <span className="text-emerald-300">good news</span> or the <span className="text-red-400">bad news</span>?"
@@ -233,7 +251,7 @@ function CallCoachOverlay({
               <p className="text-[10px] font-bold text-amber-400 uppercase tracking-widest mb-3">Pain Discovery — Feel Their Problem</p>
               <p className="text-slate-300 text-xs mb-3 italic">Don't pitch yet. Ask one of these and listen:</p>
               <div className="space-y-2">
-                {painPoints.map((pain, i) => (
+                {activePainPoints.map((pain, i) => (
                   <div
                     key={i}
                     className="flex items-start gap-2 bg-slate-700/50 rounded-lg px-3 py-2.5 cursor-pointer hover:bg-slate-700 transition-colors"
@@ -748,6 +766,8 @@ export default function DialerPage() {
         </div>
 
         {/* Auto-Dial Power Mode */}
+        <ParallelDialPanel prospects={prospects} currentIndex={currentIndex} />
+
         <div className={cn(
           'rounded-2xl border-2 p-4 mb-4 transition-all',
           autoDial ? 'border-emerald-400 bg-emerald-50' : 'border-dashed border-gray-300 bg-white'

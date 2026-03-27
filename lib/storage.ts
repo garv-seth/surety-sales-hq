@@ -12,6 +12,22 @@ export interface Prospect {
   lastContact: string;
   createdAt: string;
   campaignId?: string;
+  // Enrichment fields from automated lead gen
+  address?: string;
+  website?: string;
+  googleRating?: number;
+  reviewCount?: number;
+  confidenceScore?: number;
+  googleMapsUrl?: string;
+  research?: {
+    businessProfile: string;
+    painPoints: string[];
+    personalizedOpener: string;
+    likelyObjection: string;
+    callAngle: string;
+    talkingPoints: string[];
+    researchedAt: string;
+  };
 }
 
 export interface CallLog {
