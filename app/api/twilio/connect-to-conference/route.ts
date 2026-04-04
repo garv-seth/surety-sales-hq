@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import twilio from 'twilio';
-import { list } from '@vercel/blob';
 
 // POST: connect browser client to a conference room (join an answered call)
 // Also drops the other parallel calls

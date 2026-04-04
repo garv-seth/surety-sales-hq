@@ -180,7 +180,7 @@ export async function POST(req: NextRequest) {
       cities = ['Seattle', 'Bellevue', 'Tacoma', 'Kirkland', 'Renton'],
       businessTypes = ['Plumber', 'HVAC', 'Electrician', 'Roofer', 'Contractor'],
       state = 'WA',
-      maxPerCombo = 15,
+      maxPerCombo = 10,
       minScore = 60,
       runResearch = true,
       paginate = false, // set true to get up to 60 results per combo (costs more)
@@ -215,7 +215,7 @@ export async function POST(req: NextRequest) {
             if (nextToken && pages < maxPages) await new Promise(r => setTimeout(r, 2000));
           } while (nextToken && pages < maxPages && allPlaces.length < maxPerCombo * 2);
 
-          const candidates = allPlaces.slice(0, Math.min(maxPerCombo * 2, 30));
+          const candidates = allPlaces.slice(0, Math.min(maxPerCombo, 15)); // cap at 15 to limit Places API detail call costs
           const detailResults = await Promise.allSettled(candidates.map(p => getPlaceDetails(p.place_id)));
 
           for (let i = 0; i < candidates.length; i++) {

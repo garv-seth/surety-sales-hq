@@ -1,23 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { put, list } from '@vercel/blob';
+import IORedis from 'ioredis';
 
-const CALLS_STATE_KEY = 'twilio-parallel-calls.json';
+const CALLS_STATE_KEY = 'twilio-parallel-calls';
+
+let _redis: IORedis | null = null;
+function getRedis(): IORedis {
+  if (!_redis) {
+    const url = process.env.KV_REDIS_URL;
+    if (!url) throw new Error('KV_REDIS_URL not set');
+    _redis = new IORedis(url, { maxRetriesPerRequest: 3 });
+  }
+  return _redis;
+}
 
 async function readState() {
   try {
-    const { blobs } = await list({ prefix: CALLS_STATE_KEY });
-    if (!blobs.length) return null;
-    const token = process.env.BLOB_READ_WRITE_TOKEN;
-    const res = await fetch(blobs[0].url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
-    return await res.json();
+    const redis = getRedis();
+    const data = await redis.get(CALLS_STATE_KEY);
+    if (!data) return null;
+    return JSON.parse(data);
   } catch { return null; }
 }
 
 async function writeState(state: object) {
-  await put(CALLS_STATE_KEY, JSON.stringify(state), {
-    access: 'private', contentType: 'application/json',
-    addRandomSuffix: false, allowOverwrite: true,
-  });
+  const redis = getRedis();
+  await redis.set(CALLS_STATE_KEY, JSON.stringify(state), 'EX', 3600); // expire after 1 hour
 }
 
 // Called by Twilio status webhook for each parallel call

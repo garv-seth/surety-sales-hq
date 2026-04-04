@@ -53,7 +53,7 @@ async function fetchRealLeadsFromGoogle(
     throw new Error(`Google Places error: ${searchData.status}`);
   }
 
-  const places = (searchData.results || []).slice(0, Math.min(count * 3, 40));
+  const places = (searchData.results || []).slice(0, Math.min(count * 2, 20)); // cap at 20 to limit Places API costs
 
   const detailPromises = places.map(async (place) => {
     try {

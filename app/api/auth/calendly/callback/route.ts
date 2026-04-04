@@ -1,5 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { put } from '@vercel/blob';
+import IORedis from 'ioredis';
+
+const CALENDLY_TOKENS_KEY = 'calendly-tokens';
+
+let _redis: IORedis | null = null;
+function getRedis(): IORedis {
+  if (!_redis) {
+    const url = process.env.KV_REDIS_URL;
+    if (!url) throw new Error('KV_REDIS_URL not set');
+    _redis = new IORedis(url, { maxRetriesPerRequest: 3 });
+  }
+  return _redis;
+}
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -34,16 +46,12 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(`${baseUrl}/settings?error=token_failed`);
     }
 
-    // Save tokens to Vercel Blob (persists across devices)
-    await put('calendly-tokens.json', JSON.stringify({
+    // Save tokens to Redis (persists across devices)
+    const redis = getRedis();
+    await redis.set(CALENDLY_TOKENS_KEY, JSON.stringify({
       ...tokenData,
       saved_at: new Date().toISOString(),
-    }), {
-      access: 'private',
-      contentType: 'application/json',
-      addRandomSuffix: false,
-      allowOverwrite: true,
-    });
+    }));
 
     return NextResponse.redirect(`${baseUrl}/settings?calendly=connected`);
   } catch (err) {

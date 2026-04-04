@@ -1,14 +1,23 @@
 import { NextResponse } from 'next/server';
-import { list } from '@vercel/blob';
+import IORedis from 'ioredis';
+
+const CALENDLY_TOKENS_KEY = 'calendly-tokens';
+
+let _redis: IORedis | null = null;
+function getRedis(): IORedis {
+  if (!_redis) {
+    const url = process.env.KV_REDIS_URL;
+    if (!url) throw new Error('KV_REDIS_URL not set');
+    _redis = new IORedis(url, { maxRetriesPerRequest: 3 });
+  }
+  return _redis;
+}
 
 async function getCalendlyTokens() {
-  const { blobs } = await list({ prefix: 'calendly-tokens.json' });
-  if (!blobs.length) throw new Error('Not connected to Calendly');
-  const token = process.env.BLOB_READ_WRITE_TOKEN;
-  const res = await fetch(blobs[0].url, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-  return await res.json();
+  const redis = getRedis();
+  const data = await redis.get(CALENDLY_TOKENS_KEY);
+  if (!data) throw new Error('Not connected to Calendly');
+  return JSON.parse(data);
 }
 
 export async function GET() {
