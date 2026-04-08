@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
     // conferenceRoom: the conference room name to join
     // dropSids: array of call SIDs to terminate (other parallel calls)
 
-    const client = twilio(process.env.TWILIO_ACCOUNT_SID!, process.env.TWILIO_AUTH_TOKEN!);
+    const client = twilio(process.env.TWILIO_ACCOUNT_SID!.trim(), process.env.TWILIO_AUTH_TOKEN!.trim());
 
     // Drop other calls first
     if (dropSids?.length) {
