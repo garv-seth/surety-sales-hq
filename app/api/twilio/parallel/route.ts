@@ -1,96 +1,70 @@
 import { NextRequest, NextResponse } from 'next/server';
 import twilio from 'twilio';
-import IORedis from 'ioredis';
+import { redis } from '@/lib/redis';
 
 const CALLS_STATE_KEY = 'twilio-parallel-calls';
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://surety-sales-hq.vercel.app';
 
-interface ParallelCall {
-  sid: string;
-  phone: string;
-  prospectId: string;
-  prospectName: string;
-  status: 'queued' | 'ringing' | 'in-progress' | 'no-answer' | 'busy' | 'failed' | 'completed' | 'canceled';
-  startedAt: string;
-  answeredAt?: string;
-  conferenceRoom: string;
-}
-
-interface CallsState {
-  sessionId: string;
-  calls: ParallelCall[];
-  userConnectedTo?: string; // call SID user joined
-  updatedAt: string;
-}
-
-let _redis: IORedis | null = null;
-function getRedis(): IORedis {
-  if (!_redis) {
-    const url = process.env.KV_REDIS_URL;
-    if (!url) throw new Error('KV_REDIS_URL not set');
-    _redis = new IORedis(url, { maxRetriesPerRequest: 3 });
-  }
-  return _redis;
-}
-
-async function readCallsState(): Promise<CallsState | null> {
-  try {
-    const redis = getRedis();
-    const data = await redis.get(CALLS_STATE_KEY);
-    if (!data) return null;
-    return JSON.parse(data);
-  } catch { return null; }
-}
-
-async function writeCallsState(state: CallsState): Promise<void> {
-  const redis = getRedis();
-  await redis.set(CALLS_STATE_KEY, JSON.stringify(state), 'EX', 3600); // expire after 1 hour
-}
-
-// POST /api/twilio/parallel — initiate 3 simultaneous calls
 export async function POST(req: NextRequest) {
   try {
-    const { prospects } = await req.json();
-    // prospects: [{ id, name, phone }] — max 3
-    if (!prospects?.length) return NextResponse.json({ error: 'prospects required' }, { status: 400 });
+    const body = await req.json();
+    const { prospects, conferenceRoom } = body;
 
-    const client = twilio(process.env.TWILIO_ACCOUNT_SID!, process.env.TWILIO_AUTH_TOKEN!);
-    const sessionId = `session_${Date.now()}`;
-    const calls: ParallelCall[] = [];
+    if (!prospects || !Array.isArray(prospects) || prospects.length === 0) {
+      return NextResponse.json({ error: 'No prospects provided' }, { status: 400 });
+    }
 
-    const batch = prospects.slice(0, 3);
+    const accountSid = process.env.TWILIO_ACCOUNT_SID!.trim();
+    const authToken = process.env.TWILIO_AUTH_TOKEN!.trim();
+    const fromNumber = process.env.TWILIO_PHONE_NUMBER!.trim();
+    const client = twilio(accountSid, authToken);
 
-    await Promise.allSettled(batch.map(async (p: { id: string; name: string; phone: string }) => {
-      const conferenceRoom = `conf_${sessionId}_${p.id}`;
-      const cleanPhone = p.phone.replace(/[^\d+]/g, '');
+    const calls: any[] = [];
+
+    for (const p of prospects) {
+      const cleanPhone = p.phone?.replace(/\D/g, '');
+      if (!cleanPhone || cleanPhone.length < 10) {
+        calls.push({
+          sid: '',
+          phone: p.phone,
+          prospectId: p.id,
+          prospectName: p.name,
+          status: 'failed',
+          startedAt: new Date().toISOString(),
+          conferenceRoom,
+        });
+        continue;
+      }
+
+      const formattedPhone = cleanPhone.length === 10 ? `+1${cleanPhone}` : `+${cleanPhone}`;
 
       try {
         const call = await client.calls.create({
-          to: cleanPhone,
-          from: process.env.TWILIO_PHONE_NUMBER!,
-          url: `${BASE_URL}/api/twilio/conference-hold?room=${encodeURIComponent(conferenceRoom)}&prospectId=${p.id}`,
-          statusCallback: `${BASE_URL}/api/twilio/parallel-status?sessionId=${sessionId}&prospectId=${p.id}`,
+          to: formattedPhone,
+          from: fromNumber,
+          url: `${process.env.NEXT_PUBLIC_APP_URL}/api/twilio/connect-to-conference?conferenceRoom=${encodeURIComponent(conferenceRoom)}`,
+          statusCallback: `${process.env.NEXT_PUBLIC_APP_URL}/api/twilio/call-status`,
           statusCallbackMethod: 'POST',
           statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
-          timeout: 25,
-          machineDetection: 'Enable', // detect voicemail
+          machineDetection: 'Enable',
           asyncAmd: 'true',
-          asyncAmdStatusCallback: `${BASE_URL}/api/twilio/parallel-status?sessionId=${sessionId}&prospectId=${p.id}&amd=true`,
+          asyncAmdStatusCallback: `${process.env.NEXT_PUBLIC_APP_URL}/api/twilio/amd-status`,
+          asyncAmdStatusCallbackMethod: 'POST',
         });
 
         calls.push({
           sid: call.sid,
-          phone: cleanPhone,
+          phone: formattedPhone,
           prospectId: p.id,
           prospectName: p.name,
-          status: 'queued',
+          status: 'initiated',
           startedAt: new Date().toISOString(),
           conferenceRoom,
         });
       } catch (err) {
+        console.error(`[parallel] calls.create failed for ${p.name}: ${String(err)}`);
         calls.push({
           sid: '',
-          phone: cleanPhone,
+          phone: formattedPhone,
           prospectId: p.id,
           prospectName: p.name,
           status: 'failed',
@@ -98,25 +72,25 @@ export async function POST(req: NextRequest) {
           conferenceRoom,
         });
       }
-    }));
+    }
 
-    const state: CallsState = { sessionId, calls, updatedAt: new Date().toISOString() };
-    await writeCallsState(state);
+    // Store calls state in Redis
+    await redis.set(CALLS_STATE_KEY, JSON.stringify(calls), { ex: 3600 });
 
-    return NextResponse.json({ sessionId, calls });
+    return NextResponse.json({ calls });
   } catch (err) {
+    console.error('[parallel] route error:', String(err));
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }
 }
 
-// GET /api/twilio/parallel?sessionId=xxx — poll for call status updates
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const sessionId = searchParams.get('sessionId');
-
-  const state = await readCallsState();
-  if (!state || (sessionId && state.sessionId !== sessionId)) {
-    return NextResponse.json({ calls: [], sessionId: null });
+  try {
+    const raw = await redis.get(CALLS_STATE_KEY);
+    const calls = raw ? JSON.parse(raw as string) : [];
+    return NextResponse.json({ calls });
+  } catch (err) {
+    console.error('[parallel] GET error:', String(err));
+    return NextResponse.json({ error: String(err) }, { status: 500 });
   }
-  return NextResponse.json(state);
 }
